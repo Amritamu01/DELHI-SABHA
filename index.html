@@ -12,13 +12,15 @@
         import { getFirestore, collection, addDoc, getDocs, doc, setDoc, serverTimestamp, query, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         
-        // 🔥 YOUR FIREBASE CONFIG (Copy-pasted from Firebase Console)
-        const firebaseConfig = {
-            apiKey: "AIzaSyCBVXhX11_8___T1NzDPwGPXZxLYl8VuF4",
-            authDomain: "politics-fd465.firebaseapp.com",
-            projectId: "politics-fd465",
-            storageBucket: "politics-fd465.firebasestorage.app",
-            messagingSenderId: "506429417906",
+   const firebaseConfig = {
+  apiKey: "AIzaSyCBVXhX11_8___T1NzDPwGPXZxLYl8VuF4",
+  authDomain: "politics-fd465.firebaseapp.com",
+  databaseURL: "https://politics-fd465-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "politics-fd465",
+  storageBucket: "politics-fd465.firebasestorage.app",
+  messagingSenderId: "506429417906",
+  appId: "1:506429417906:web:0196c57945e2d289895cab"
+};
             appId: "1:506429417906:web:0196c57945e2d289895cab"
         };
 
@@ -1040,3 +1042,4 @@
     </script>
 </body>
 </html>
+
