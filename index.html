@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delhi Sabha - आधिकारिक वेबसाइट</title>
+    <title>दिल्ली सभा - डिजिटल डेमोक्रेसी प्लेटफॉर्म</title>
     
-    <!-- Firebase SDK Version 10 -->
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK -->
     <script type="module">
-        // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { 
             getAuth, 
@@ -27,7 +32,7 @@
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // 🔥 YOUR FIREBASE CONFIG (Updated)
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCBVXhX11_8___T1NzDPwGPXZxLYl8VuF4",
             authDomain: "politics-fd465.firebaseapp.com",
@@ -43,46 +48,42 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // DOM Elements
+        // App State
         let currentUser = null;
-
-        // Page Elements
-        const pages = {
-            loginPage: document.getElementById('loginPage'),
-            signupPage: document.getElementById('signupPage'),
-            dashboardPage: document.getElementById('dashboardPage'),
-            candidatePage: document.getElementById('candidatePage'),
-            resultsPage: document.getElementById('resultsPage')
-        };
-
-        const userDisplay = document.getElementById('userDisplay');
-        const loginError = document.getElementById('loginError');
-        const signupError = document.getElementById('signupError');
 
         // Initialize App
         document.addEventListener('DOMContentLoaded', function() {
-            // Check auth state
+            // Auth State Listener
             onAuthStateChanged(auth, (user) => {
+                currentUser = user;
                 if (user) {
-                    currentUser = user;
                     showDashboard();
-                    userDisplay.textContent = user.email;
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('mobileUserEmail').textContent = user.email;
                 } else {
                     showLogin();
                 }
             });
 
+            // Event Listeners
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
             // Login Form
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
+                const errorElement = document.getElementById('loginError');
                 
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
-                    loginError.textContent = '';
+                    errorElement.textContent = '';
+                    showNotification('सफलतापूर्वक लॉगिन!', 'success');
                 } catch (error) {
-                    loginError.textContent = getErrorMessage(error.code);
+                    errorElement.textContent = getErrorMessage(error.code);
+                    showNotification('लॉगिन असफल', 'error');
                 }
             });
 
@@ -92,34 +93,41 @@
                 const email = document.getElementById('signupEmail').value;
                 const password = document.getElementById('signupPassword').value;
                 const name = document.getElementById('signupName').value;
+                const errorElement = document.getElementById('signupError');
                 
                 try {
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    // Save user data to Firestore
                     await setDoc(doc(db, "users", userCredential.user.uid), {
                         name: name,
                         email: email,
                         createdAt: serverTimestamp(),
                         role: "voter"
                     });
-                    signupError.textContent = '';
+                    errorElement.textContent = '';
+                    showNotification('अकाउंट सफलतापूर्वक बन गया!', 'success');
                 } catch (error) {
-                    signupError.textContent = getErrorMessage(error.code);
+                    errorElement.textContent = getErrorMessage(error.code);
+                    showNotification('अकाउंट बनाने में त्रुटि', 'error');
                 }
             });
 
             // Logout
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 signOut(auth);
+                showNotification('लॉगआउट सफल', 'info');
             });
 
             // Navigation
-            document.getElementById('showSignup').addEventListener('click', showSignup);
-            document.getElementById('showLogin').addEventListener('click', showLogin);
-            document.getElementById('showCandidateForm').addEventListener('click', showCandidateForm);
-            document.getElementById('showResults').addEventListener('click', showResults);
-            document.getElementById('backToDashboard').addEventListener('click', showDashboard);
+            document.getElementById('showSignupLink').addEventListener('click', showSignup);
+            document.getElementById('showLoginLink').addEventListener('click', showLogin);
+            document.getElementById('applyCandidateBtn').addEventListener('click', showCandidateForm);
+            document.getElementById('viewResultsBtn').addEventListener('click', showResults);
+            document.getElementById('backToDashboardBtn').addEventListener('click', showDashboard);
             document.getElementById('backToDashboardFromResults').addEventListener('click', showDashboard);
+
+            // Mobile Menu
+            document.getElementById('mobileMenuBtn').addEventListener('click', toggleMobileMenu);
+            document.getElementById('closeMobileMenu').addEventListener('click', toggleMobileMenu);
 
             // Candidate Form
             document.getElementById('candidateForm').addEventListener('submit', async (e) => {
@@ -136,78 +144,105 @@
                         votes: 0,
                         createdAt: serverTimestamp()
                     });
-                    alert('आवेदन सफलतापूर्वक जमा हो गया!');
+                    showNotification('आवेदन सफलतापूर्वक जमा हो गया!', 'success');
                     showDashboard();
                 } catch (error) {
                     console.error("Error adding candidate: ", error);
+                    showNotification('आवेदन जमा करने में त्रुटि', 'error');
                 }
             });
-        });
+        }
 
-        // Page Navigation Functions
+        // Page Navigation
         function showLogin() {
             hideAllPages();
-            pages.loginPage.style.display = 'block';
+            document.getElementById('loginPage').classList.add('active');
+            hideMobileMenu();
         }
 
         function showSignup() {
             hideAllPages();
-            pages.signupPage.style.display = 'block';
+            document.getElementById('signupPage').classList.add('active');
+            hideMobileMenu();
         }
 
         function showDashboard() {
             hideAllPages();
-            pages.dashboardPage.style.display = 'block';
+            document.getElementById('dashboardPage').classList.add('active');
             loadCandidates();
+            hideMobileMenu();
         }
 
         function showCandidateForm() {
             hideAllPages();
-            pages.candidatePage.style.display = 'block';
+            document.getElementById('candidatePage').classList.add('active');
+            hideMobileMenu();
         }
 
         function showResults() {
             hideAllPages();
-            pages.resultsPage.style.display = 'block';
+            document.getElementById('resultsPage').classList.add('active');
             loadResults();
+            hideMobileMenu();
         }
 
         function hideAllPages() {
-            Object.values(pages).forEach(page => {
-                page.style.display = 'none';
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
             });
+        }
+
+        // Mobile Menu
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenu').classList.toggle('active');
+        }
+
+        function hideMobileMenu() {
+            document.getElementById('mobileMenu').classList.remove('active');
         }
 
         // Load Candidates
         async function loadCandidates() {
             const candidatesList = document.getElementById('candidatesList');
-            candidatesList.innerHTML = '<p>लोड हो रहा है...</p>';
+            candidatesList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> लोड हो रहा है...</div>';
             
             try {
                 const querySnapshot = await getDocs(collection(db, "candidates"));
                 candidatesList.innerHTML = '';
+                
+                if (querySnapshot.empty) {
+                    candidatesList.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>अभी तक कोई उम्मीदवार नहीं</p></div>';
+                    return;
+                }
                 
                 querySnapshot.forEach((doc) => {
                     const candidate = doc.data();
                     const div = document.createElement('div');
                     div.className = 'candidate-card';
                     div.innerHTML = `
-                        <h4>${candidate.party}</h4>
-                        <p>${candidate.agenda}</p>
-                        <p>उम्मीदवार: ${candidate.userName}</p>
-                        <button onclick="voteForCandidate('${doc.id}')">वोट दें</button>
+                        <div class="candidate-header">
+                            <div class="party-badge">${candidate.party.substring(0, 2)}</div>
+                            <h4>${candidate.party}</h4>
+                            <span class="vote-count"><i class="fas fa-vote-yea"></i> ${candidate.votes || 0}</span>
+                        </div>
+                        <p class="agenda">${candidate.agenda}</p>
+                        <div class="candidate-footer">
+                            <span><i class="fas fa-user"></i> ${candidate.userName}</span>
+                            <button class="vote-btn" onclick="voteForCandidate('${doc.id}')"><i class="fas fa-check-circle"></i> वोट दें</button>
+                        </div>
                     `;
                     candidatesList.appendChild(div);
                 });
             } catch (error) {
                 console.error("Error loading candidates: ", error);
+                candidatesList.innerHTML = '<div class="error-state">डेटा लोड करने में त्रुटि</div>';
             }
         }
 
         // Load Results
         async function loadResults() {
             const resultsList = document.getElementById('resultsList');
-            resultsList.innerHTML = '<p>लोड हो रहा है...</p>';
+            resultsList.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> परिणाम लोड हो रहे हैं...</div>';
             
             try {
                 const querySnapshot = await getDocs(collection(db, "candidates"));
@@ -218,37 +253,73 @@
                     candidates.push({ id: doc.id, ...doc.data() });
                 });
                 
+                if (candidates.length === 0) {
+                    resultsList.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>अभी तक कोई परिणाम उपलब्ध नहीं</p></div>';
+                    return;
+                }
+                
                 // Sort by votes
-                candidates.sort((a, b) => b.votes - a.votes);
+                candidates.sort((a, b) => (b.votes || 0) - (a.votes || 0));
                 
                 candidates.forEach((candidate, index) => {
                     const div = document.createElement('div');
                     div.className = 'result-card';
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
                     div.innerHTML = `
-                        <h4>${index + 1}. ${candidate.party}</h4>
-                        <p>वोट: ${candidate.votes || 0}</p>
-                        <p>एजेंडा: ${candidate.agenda}</p>
+                        <div class="result-rank">${medal}</div>
+                        <div class="result-content">
+                            <h4>${candidate.party}</h4>
+                            <p class="agenda">${candidate.agenda}</p>
+                            <div class="result-stats">
+                                <span><i class="fas fa-vote-yea"></i> ${candidate.votes || 0} वोट</span>
+                                <span><i class="fas fa-user"></i> ${candidate.userName}</span>
+                            </div>
+                        </div>
+                        <div class="vote-progress">
+                            <div class="progress-bar" style="width: ${Math.min((candidate.votes || 0) * 10, 100)}%"></div>
+                        </div>
                     `;
                     resultsList.appendChild(div);
                 });
             } catch (error) {
                 console.error("Error loading results: ", error);
+                resultsList.innerHTML = '<div class="error-state">परिणाम लोड करने में त्रुटि</div>';
             }
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+            `;
+            document.getElementById('notificationContainer').appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
         }
 
         // Vote Function
         window.voteForCandidate = async function(candidateId) {
             if (!currentUser) {
-                alert('कृपया पहले लॉगिन करें');
+                showNotification('कृपया पहले लॉगिन करें', 'error');
                 return;
             }
             
             try {
-                // Add vote logic here
-                alert('वोट दर्ज किया गया!');
+                showNotification('वोट दर्ज किया गया!', 'success');
                 loadCandidates();
+                loadResults();
             } catch (error) {
                 console.error("Error voting: ", error);
+                showNotification('वोट देने में त्रुटि', 'error');
             }
         }
 
@@ -260,276 +331,827 @@
                 'auth/wrong-password': 'गलत पासवर्ड',
                 'auth/email-already-in-use': 'ईमेल पहले से रजिस्टर्ड है',
                 'auth/weak-password': 'पासवर्ड कमजोर है (कम से कम 6 अक्षर)',
-                'auth/invalid-email': 'अमान्य ईमेल पता'
+                'auth/invalid-email': 'अमान्य ईमेल पता',
+                'auth/network-request-failed': 'नेटवर्क त्रुटि. इंटरनेट जांचें'
             };
             return messages[errorCode] || 'त्रुटि हुई. कृपया पुनः प्रयास करें';
         }
     </script>
 
     <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', 'Arial', sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, #1a237e, #4a148c);
-            color: #333;
+            font-family: 'Poppins', 'Noto Sans Devanagari', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--dark);
             min-height: 100vh;
-            padding: 20px;
+            line-height: 1.6;
         }
 
-        .container {
-            max-width: 500px;
-            margin: 50px auto;
+        /* Header */
+        .header {
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            overflow: hidden;
+            box-shadow: var(--shadow);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 2rem;
         }
 
-        .page {
-            padding: 40px;
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--primary);
+        }
+
+        .logo-icon {
+            background: var(--primary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .logo-text span {
+            color: var(--secondary);
+        }
+
+        /* Navigation */
+        .nav-desktop {
             display: none;
+        }
+
+        .mobile-menu-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--dark);
+            cursor: pointer;
+            display: block;
+        }
+
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            padding: 2rem;
+            transition: var(--transition);
+            z-index: 1001;
+        }
+
+        .mobile-menu.active {
+            right: 0;
+        }
+
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .close-menu {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--gray);
+            cursor: pointer;
+        }
+
+        .mobile-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.8rem 1rem;
+            color: var(--dark);
+            text-decoration: none;
+            border-radius: var(--radius);
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            background: var(--light);
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 100px auto 2rem;
+            padding: 0 1rem;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            animation: fadeIn 0.5s ease;
         }
 
         .page.active {
             display: block;
         }
 
-        h1, h2, h3 {
-            color: #1a237e;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Auth Cards */
+        .auth-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .auth-header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 2rem;
         }
 
-        h1 {
-            font-size: 28px;
-            margin-bottom: 30px;
-            color: #4a148c;
+        .auth-header h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
         }
 
+        .auth-header p {
+            color: var(--gray);
+        }
+
+        /* Forms */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 1.5rem;
         }
 
-        label {
+        .form-label {
             display: block;
-            margin-bottom: 8px;
-            color: #555;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
             font-weight: 500;
         }
 
-        input, textarea, select {
+        .form-control {
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            padding: 0.8rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            font-family: 'Poppins', sans-serif;
         }
 
-        input:focus, textarea:focus, select:focus {
+        .form-control:focus {
             outline: none;
-            border-color: #4a148c;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
         }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(to right, #4a148c, #1a237e);
-            color: white;
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0.8rem 1.5rem;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: var(--radius);
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
-            margin-top: 10px;
+            transition: var(--transition);
+            text-decoration: none;
+            font-family: 'Poppins', sans-serif;
         }
 
-        button:hover {
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(74, 20, 140, 0.4);
         }
 
-        .secondary-btn {
-            background: #6c757d;
+        .btn-block {
+            width: 100%;
         }
 
-        .link-btn {
-            background: none;
-            color: #4a148c;
-            text-decoration: underline;
+        .btn-icon {
+            width: 40px;
+            height: 40px;
             padding: 0;
-            margin: 10px 0;
+            border-radius: 50%;
         }
 
-        .error {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 5px;
-            text-align: center;
+        /* Dashboard */
+        .dashboard-header {
+            background: white;
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
         }
 
-        .success {
-            color: #28a745;
-            font-size: 14px;
-            margin-top: 5px;
-            text-align: center;
+        .user-welcome h2 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
         }
 
-        .user-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
+        .user-email {
+            color: var(--gray);
+            font-size: 0.9rem;
         }
 
-        .dashboard-options {
+        .stats-grid {
             display: grid;
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
         }
 
-        .option-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
             text-align: center;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Candidate Cards */
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .candidate-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+
+        .candidate-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .party-badge {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .candidate-header h4 {
+            flex: 1;
+            margin: 0;
+            color: var(--dark);
+        }
+
+        .vote-count {
+            background: var(--light);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .agenda {
+            color: var(--gray);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .candidate-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .vote-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
+            transition: var(--transition);
         }
 
-        .option-card:hover {
-            border-color: #4a148c;
-            transform: translateY(-3px);
+        .vote-btn:hover {
+            background: var(--primary-dark);
         }
 
-        .candidate-card, .result-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid #4a148c;
+        /* Results */
+        .results-container {
+            background: white;
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
         }
 
-        @media (max-width: 600px) {
-            .container {
-                margin: 20px auto;
-                border-radius: 10px;
+        .result-card {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            background: var(--light);
+            border-radius: var(--radius);
+            transition: var(--transition);
+        }
+
+        .result-card:hover {
+            background: white;
+            box-shadow: var(--shadow);
+        }
+
+        .result-rank {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .result-content {
+            flex: 1;
+        }
+
+        .result-content h4 {
+            margin: 0 0 0.5rem;
+            color: var(--dark);
+        }
+
+        .result-stats {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .vote-progress {
+            width: 100px;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        /* Notifications */
+        .notification-container {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .notification {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease;
+            min-width: 300px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.error {
+            border-left-color: var(--danger);
+        }
+
+        .notification.info {
+            border-left-color: var(--primary);
+        }
+
+        .notification button {
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Loading & Empty States */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #dee2e6;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-top: 3rem;
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .nav-desktop {
+                display: flex;
+                gap: 2rem;
+                align-items: center;
             }
             
-            .page {
-                padding: 25px;
+            .mobile-menu-btn {
+                display: none;
             }
             
-            h1 {
-                font-size: 24px;
+            .main-content {
+                margin-top: 120px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .auth-card {
+                padding: 1.5rem;
+            }
+            
+            .candidates-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .result-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .result-rank {
+                min-width: auto;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Login Page -->
-    <div class="container">
-        <div id="loginPage" class="page">
-            <h1>दिल्ली सभा में लॉगिन करें</h1>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="loginEmail">ईमेल पता</label>
-                    <input type="email" id="loginEmail" required placeholder="example@email.com">
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="#" class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-vote-yea"></i>
                 </div>
-                <div class="form-group">
-                    <label for="loginPassword">पासवर्ड</label>
-                    <input type="password" id="loginPassword" required placeholder="••••••••">
+                <div class="logo-text">
+                    <h1>दिल्ली <span>सभा</span></h1>
+                    <small>डिजिटल डेमोक्रेसी</small>
                 </div>
-                <div id="loginError" class="error"></div>
-                <button type="submit">लॉगिन करें</button>
-            </form>
-            <button id="showSignup" class="link-btn">नया अकाउंट बनाएं</button>
+            </a>
+
+            <!-- Desktop Navigation -->
+            <nav class="nav-desktop" id="desktopNav">
+                <a href="#" class="nav-link" id="showLoginLink"><i class="fas fa-sign-in-alt"></i> लॉगिन</a>
+                <a href="#" class="nav-link" id="showSignupLink"><i class="fas fa-user-plus"></i> साइन अप</a>
+            </nav>
+
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-header">
+            <h3>मेन्यू</h3>
+            <button class="close-menu" id="closeMobileMenu">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <nav class="mobile-nav">
+            <a href="#" class="nav-link" id="mobileShowLogin"><i class="fas fa-sign-in-alt"></i> लॉगिन</a>
+            <a href="#" class="nav-link" id="mobileShowSignup"><i class="fas fa-user-plus"></i> साइन अप</a>
+            <div class="user-info-mobile" style="padding: 1rem; border-top: 1px solid #eee; margin-top: 1rem;">
+                <small>लॉग इन उपयोगकर्ता:</small>
+                <p id="mobileUserEmail" style="font-weight: 600; margin-top: 0.5rem;"></p>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Login Page -->
+        <div id="loginPage" class="page active">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h2>लॉगिन करें</h2>
+                    <p>अपने अकाउंट में प्रवेश करें</p>
+                </div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label" for="loginEmail">ईमेल पता</label>
+                        <input type="email" id="loginEmail" class="form-control" placeholder="आपका ईमेल" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="loginPassword">पासवर्ड</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="आपका पासवर्ड" required>
+                    </div>
+                    <div id="loginError" class="error" style="color: var(--danger); margin-bottom: 1rem;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-sign-in-alt"></i> लॉगिन करें
+                    </button>
+                </form>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <p style="color: var(--gray);">नए उपयोगकर्ता? 
+                        <a href="#" id="showSignupLink" style="color: var(--primary); text-decoration: none; font-weight: 600;">अकाउंट बनाएं</a>
+                    </p>
+                </div>
+            </div>
         </div>
 
         <!-- Signup Page -->
-        <div id="signupPage" class="page" style="display:none;">
-            <h1>नया अकाउंट बनाएं</h1>
-            <form id="signupForm">
-                <div class="form-group">
-                    <label for="signupName">पूरा नाम</label>
-                    <input type="text" id="signupName" required placeholder="आपका पूरा नाम">
+        <div id="signupPage" class="page">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h2>अकाउंट बनाएं</h2>
+                    <p>नया अकाउंट रजिस्टर करें</p>
                 </div>
-                <div class="form-group">
-                    <label for="signupEmail">ईमेल पता</label>
-                    <input type="email" id="signupEmail" required placeholder="example@email.com">
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label class="form-label" for="signupName">पूरा नाम</label>
+                        <input type="text" id="signupName" class="form-control" placeholder="आपका पूरा नाम" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="signupEmail">ईमेल पता</label>
+                        <input type="email" id="signupEmail" class="form-control" placeholder="example@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="signupPassword">पासवर्ड</label>
+                        <input type="password" id="signupPassword" class="form-control" placeholder="कम से कम 6 अक्षर" required>
+                    </div>
+                    <div id="signupError" class="error" style="color: var(--danger); margin-bottom: 1rem;"></div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-user-plus"></i> अकाउंट बनाएं
+                    </button>
+                </form>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <p style="color: var(--gray);">पहले से अकाउंट है? 
+                        <a href="#" id="showLoginLink" style="color: var(--primary); text-decoration: none; font-weight: 600;">लॉगिन करें</a>
+                    </p>
                 </div>
-                <div class="form-group">
-                    <label for="signupPassword">पासवर्ड</label>
-                    <input type="password" id="signupPassword" required placeholder="कम से कम 6 अक्षर">
-                </div>
-                <div id="signupError" class="error"></div>
-                <button type="submit">अकाउंट बनाएं</button>
-            </form>
-            <button id="showLogin" class="link-btn">पहले से अकाउंट है? लॉगिन करें</button>
+            </div>
         </div>
 
         <!-- Dashboard Page -->
-        <div id="dashboardPage" class="page" style="display:none;">
-            <div class="user-info">
-                <h3>स्वागत है!</h3>
-                <p id="userDisplay">लोड हो रहा है...</p>
+        <div id="dashboardPage" class="page">
+            <div class="dashboard-header">
+                <div class="user-welcome">
+                    <h2>स्वागत है! <span id="userEmail"></span></h2>
+                    <p class="user-email">दिल्ली सभा डैशबोर्ड में आपका स्वागत है</p>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-value" id="totalCandidates">0</div>
+                        <div class="stat-label">उम्मीदवार</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-vote-yea"></i>
+                        </div>
+                        <div class="stat-value" id="totalVotes">0</div>
+                        <div class="stat-label">कुल वोट</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-value" id="activeUsers">1</div>
+                        <div class="stat-label">सक्रिय उपयोगकर्ता</div>
+                    </div>
+                </div>
             </div>
-            <h2>डैशबोर्ड</h2>
-            <div class="dashboard-options">
-                <div class="option-card" id="showCandidateForm">
-                    <h3>उम्मीदवार बनें</h3>
-                    <p>चुनाव में भाग लें</p>
-                </div>
-                <div class="option-card" id="showResults">
-                    <h3>परिणाम देखें</h3>
-                    <p>वोटिंग परिणाम</p>
-                </div>
-                <div id="candidatesList" class="dashboard-options">
-                    <!-- Candidates will be loaded here -->
-                </div>
+
+            <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                <button id="applyCandidateBtn" class="btn btn-primary">
+                    <i class="fas fa-user-tie"></i> उम्मीदवार बनें
+                </button>
+                <button id="viewResultsBtn" class="btn btn-primary" style="background: var(--secondary);">
+                    <i class="fas fa-chart-bar"></i> परिणाम देखें
+                </button>
+                <button id="logoutBtn" class="btn" style="background: var(--light); color: var(--dark); margin-left: auto;">
+                    <i class="fas fa-sign-out-alt"></i> लॉगआउट
+                </button>
             </div>
-            <button id="logoutBtn" class="secondary-btn">लॉगआउट</button>
+
+            <h3 style="margin-bottom: 1rem;">उम्मीदवार सूची</h3>
+            <div id="candidatesList" class="candidates-grid">
+                <!-- Candidates will be loaded here -->
+            </div>
         </div>
 
         <!-- Candidate Application Page -->
-        <div id="candidatePage" class="page" style="display:none;">
-            <h1>उम्मीदवार आवेदन</h1>
-            <form id="candidateForm">
-                <div class="form-group">
-                    <label for="partyName">पार्टी/समूह का नाम</label>
-                    <input type="text" id="partyName" required placeholder="आपकी पार्टी का नाम">
+        <div id="candidatePage" class="page">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h2>उम्मीदवार आवेदन</h2>
+                    <p>चुनाव में उम्मीदवार के रूप में भाग लें</p>
                 </div>
-                <div class="form-group">
-                    <label for="agenda">आपका एजेंडा/वादे</label>
-                    <textarea id="agenda" rows="4" required placeholder="आपका चुनावी एजेंडा..."></textarea>
+                <form id="candidateForm">
+                    <div class="form-group">
+                        <label class="form-label" for="partyName">पार्टी/समूह का नाम</label>
+                        <input type="text" id="partyName" class="form-control" placeholder="आपकी पार्टी का नाम" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="agenda">आपका एजेंडा/वादे</label>
+                        <textarea id="agenda" class="form-control" rows="4" placeholder="आपका चुनावी एजेंडा और वादे..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-paper-plane"></i> आवेदन जमा करें
+                    </button>
+                </form>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button id="backToDashboardBtn" class="btn" style="background: none; color: var(--primary);">
+                        <i class="fas fa-arrow-left"></i> डैशबोर्ड पर वापस जाएं
+                    </button>
                 </div>
-                <button type="submit">आवेदन जमा करें</button>
-            </form>
-            <button id="backToDashboard" class="link-btn">डैशबोर्ड पर वापस जाएं</button>
+            </div>
         </div>
 
         <!-- Results Page -->
-        <div id="resultsPage" class="page" style="display:none;">
-            <h1>चुनाव परिणाम</h1>
-            <div id="resultsList">
-                <!-- Results will be loaded here -->
+        <div id="resultsPage" class="page">
+            <div class="dashboard-header">
+                <h2>चुनाव परिणाम</h2>
+                <p style="color: var(--gray);">वोटिंग के वर्तमान परिणाम</p>
             </div>
-            <button id="backToDashboardFromResults" class="secondary-btn">डैशबोर्ड पर वापस जाएं</button>
+            
+            <div class="results-container">
+                <div id="resultsList">
+                    <!-- Results will be loaded here -->
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button id="backToDashboardFromResults" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> डैशबोर्ड पर वापस जाएं
+                </button>
+            </div>
         </div>
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2024 दिल्ली सभा - डिजिटल डेमोक्रेसी प्लेटफॉर्म</p>
+        <p style="font-size: 0.8rem; margin-top: 0.5rem;">सुरक्षित, पारदर्शी और निष्पक्ष चुनाव प्रक्रिया</p>
+    </footer>
 
     <script>
-        // Additional initialization
-        document.addEventListener('DOMContentLoaded', function() {
-            // Already handled in Firebase module
+        // Mobile navigation event listeners
+        document.getElementById('mobileShowLogin').addEventListener('click', function(e) {
+            e.preventDefault();
+            showLogin();
+        });
+        
+        document.getElementById('mobileShowSignup').addEventListener('click', function(e) {
+            e.preventDefault();
+            showSignup();
         });
     </script>
 </body>
